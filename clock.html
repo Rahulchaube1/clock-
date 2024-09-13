@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rclocky</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .controls button {
+            background-color: #ffffff;
+            color: #1e3c72;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: #d4e6f1;
+        }
+
+        .clock {
+            position: relative;
+            margin: 20px auto;
+        }
+
+        .digital {
+            font-size: 4em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .analog {
+            display: none;
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border: 10px solid #ffffff;
+            border-radius: 50%;
+            margin: auto;
+            background: radial-gradient(circle at center, #ffffff, #e0e0e0);
+        }
+
+        .analog .hand {
+            position: absolute;
+            width: 50%;
+            height: 2px;
+            background: #ffffff;
+            top: 50%;
+            transform-origin: 100%;
+            transform: rotate(0deg);
+        }
+
+        .hand.hour {
+            height: 4px;
+            background: #ff5722;
+        }
+
+        .hand.minute {
+            height: 3px;
+            background: #ffeb3b;
+        }
+
+        .hand.second {
+            height: 2px;
+            background: #2196f3;
+        }
+
+        .date {
+            font-size: 1.5em;
+            margin: 20px 0;
+        }
+
+        .world-time {
+            margin: 20px 0;
+        }
+
+        .world-time div {
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+
+        .alarm {
+            margin-top: 30px;
+        }
+
+        .alarm input[type="time"] {
+            padding: 10px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+
+        .alarm button {
+            background-color: #ff5722;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+        }
+
+        .alarm button:hover {
+            background-color: #e64a19;
+        }
+
+        .alarmStatus {
+            margin-top: 10px;
+            font-size: 1.2em;
+        }
+
+        .weather {
+            margin-top: 30px;
+        }
+
+        .weather h3 {
+            margin: 10px 0;
+        }
+
+        .weather-info {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">Rclocky</div>
+    <div class="container">
+        <div class="controls">
+            <button onclick="toggleView()">Toggle View</button>
+            <button onclick="changeTheme()">Change Theme</button>
+            <button onclick="speakTime()">Speak Time</button>
+        </div>
+        <div class="clock" id="clock">
+            <div class="digital" id="digitalClock"></div>
+            <div class="analog" id="analogClock">
+                <!-- Analog clock hands will be added by JavaScript -->
+            </div>
+        </div>
+        <div class="date" id="date"></div>
+        <div class="world-time">
+            <h3>World Time</h3>
+            <div id="worldClock"></div>
+        </div>
+        <div class="alarm">
+            <h3>Set Alarm</h3>
+            <input type="time" id="alarmTime">
+            <button onclick="setAlarm()">Set Alarm</button>
+            <div class="alarmStatus" id="alarmStatus"></div>
+        </div>
+        <div class="weather">
+            <h3>Weather Information</h3>
+            <div class="weather-info" id="weatherInfo">Loading...</div>
+        </div>
+    </div>
+    <script>
+        let isDigitalView = true;
+        let alarmTime = null;
+
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // Update digital clock
+            const digitalHours = String(hours).padStart(2, '0');
+            const digitalMinutes = String(minutes).padStart(2, '0');
+            const digitalSeconds = String(seconds).padStart(2, '0');
+            document.getElementById('digitalClock').textContent = `${digitalHours}:${digitalMinutes}:${digitalSeconds}`;
+            
+            // Update analog clock
+            const analogClock = document.getElementById('analogClock');
+            let hourHand = analogClock.querySelector('.hand.hour');
+            let minuteHand = analogClock.querySelector('.hand.minute');
+            let secondHand = analogClock.querySelector('.hand.second');
+            
+            if (!hourHand) hourHand = createHand('hour');
+            if (!minuteHand) minuteHand = createHand('minute');
+            if (!secondHand) secondHand = createHand('second');
+            
+            analogClock.appendChild(hourHand);
+            analogClock.appendChild(minuteHand);
+            analogClock.appendChild(secondHand);
+            
+            const hourDeg = (hours % 12) * 30 + minutes * 0.5;
+            const minuteDeg = minutes * 6;
+            const secondDeg = seconds * 6;
+            
+            hourHand.style.transform = `rotate(${hourDeg}deg)`;
+            minuteHand.style.transform = `rotate(${minuteDeg}deg)`;
+            secondHand.style.transform = `rotate(${secondDeg}deg)`;
+            
+            // Update date
+            const date = now.toDateString();
+            document.getElementById('date').textContent = date;
+            
+            // Update world time
+            const timeZones = ['GMT', 'America/New_York', 'Europe/London', 'Asia/Tokyo'];
+            const worldClockDiv = document.getElementById('worldClock');
+            worldClockDiv.innerHTML = '';
+            timeZones.forEach(zone => {
+                const worldTime = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeStyle: 'short', dateStyle: 'short' }).format(now);
+                const div = document.createElement('div');
+                div.textContent = `${zone}: ${worldTime}`;
+                worldClockDiv.appendChild(div);
+            });
+            
+            // Check alarm
+            if (alarmTime && now.toTimeString().startsWith(alarmTime)) {
+                alert('Alarm ringing!');
+                alarmTime = null; // Reset alarm
+            }
+        }
+
+        function createHand(type) {
+            const hand = document.createElement('div');
+            hand.classList.add('hand', type);
+            return hand;
+        }
+
+        function toggleView() {
+            isDigitalView = !isDigitalView;
+            document.getElementById('digitalClock').style.display = isDigitalView ? 'block' : 'none';
+            document.getElementById('analogClock').style.display = isDigitalView ? 'none' : 'block';
+        }
+
+        function changeTheme() {
+            document.body.style.background = document.body.style.background === 'linear-gradient(135deg, #1e3c72, #2a5298)' 
+                ? 'linear-gradient(135deg, #f0f0f0, #c0c0c0)' 
+                : 'linear-gradient(135deg, #1e3c72, #2a5298)';
+            document.body.style.color = document.body.style.color === '#ffffff' ? '#000000' : '#ffffff';
+        }
+
+        function speakTime() {
+            const digitalTime = document.getElementById('digitalClock').textContent;
+            const utterance = new SpeechSynthesisUtterance(`The time is ${digitalTime}`);
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function setAlarm() {
+            alarmTime = document.getElementById('alarmTime').value;
+            document.getElementById('alarmStatus').textContent = alarmTime ? `Alarm set for ${alarmTime}` : 'No alarm set';
+        }
+
+        function fetchWeather() {
+            // Replace 'YOUR_API_KEY' with your actual API key for a weather service
+            const apiKey = '';
+            const weatherInfoDiv = document.getElementById('weatherInfo');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const { latitude, longitude } = position.coords;
+                    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const temperature = data.main.temp;
+                            const description = data.weather[0].description;
+                            weatherInfoDiv.textContent = `Temperature: ${temperature}°C, ${description}`;
+                        })
+                        .catch(error => {
+                            weatherInfoDiv.textContent = 'Error fetching weather information';
+                            console.error('Weather API Error:', error);
+                        });
+                }, () => {
+                    weatherInfoDiv.textContent = 'Geolocation not supported or permission denied';
+                });
+            } else {
+                weatherInfoDiv.textContent = 'Geolocation not supported';
+            }
+        }
+
+        // Initial clock update and set interval
+        updateClock();
+        setInterval(updateClock, 1000);
+        fetchWeather(); // Fetch weather on load
+    </script>
+</body>
+</html>
